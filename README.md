@@ -9,7 +9,7 @@ go get -u github.com/giangcoy/go-dnscache
 
 # Usage
 
-Create a new instance and use it in place of `net.Resolver`. New names will be cached. Call the `Refresh` method at regular interval to update cached entries and cleanup unused ones.
+Create httpClient with dnscache.DialContext
 
 ```go
 c := &http.Client{Transport: &http.Transport{
