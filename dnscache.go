@@ -3,7 +3,6 @@ package dnscache
 import (
 	"context"
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -11,21 +10,24 @@ import (
 )
 
 var (
-	r    = &dnscache.Resolver{}
-	idx  = uint64(0)
-	once = &sync.Once{}
+	r                  = &dnscache.Resolver{}
+	idx                = uint64(0)
+	defaultDialContext = (&net.Dialer{Timeout: 30 * time.Second,
+		KeepAlive: 30 * time.Second}).DialContext
 )
 
+func init() {
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for range t.C {
+			r.Refresh(true)
+		}
+	}()
+
+}
 func DialContext(ctx context.Context, network string, addr string) (conn net.Conn, err error) {
-	once.Do(func() {
-		go func() {
-			t := time.NewTicker(5 * time.Minute)
-			defer t.Stop()
-			for range t.C {
-				r.Refresh(true)
-			}
-		}()
-	})
+
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -38,12 +40,11 @@ func DialContext(ctx context.Context, network string, addr string) (conn net.Con
 	id := atomic.AddUint64(&idx, 1)
 	for i := uint64(0); i < l; i++ {
 		ip := ips[(i+id)%l]
-		var dialer net.Dialer
-		conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
+		conn, err = defaultDialContext(ctx, network, net.JoinHostPort(ip, port))
 		if err == nil {
-			break
+			return conn, err
 		}
 	}
-	return
+	return defaultDialContext(ctx, network, addr)
 
 }
