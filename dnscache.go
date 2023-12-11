@@ -19,6 +19,7 @@ var (
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 	}).DialContext
+	Unused = false
 )
 
 // init initializes a background goroutine to periodically refresh the DNS cache.
@@ -27,7 +28,7 @@ func init() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
 		for range t.C {
-			r.Refresh(true)
+			r.Refresh(Unused)
 		}
 	}()
 }
